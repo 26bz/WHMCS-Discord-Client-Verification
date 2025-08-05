@@ -1,38 +1,33 @@
 ---
-name: Bug report
-about: Create a report to help us improve
-title: ''
-labels: ''
+name: Bug Report
+about: Report a bug with the WHMCS Discord Client Verification addon
+title: '[BUG] '
+labels: 'bug'
 assignees: ''
 
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+**Bug Description**
+Brief description of the issue.
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+**Environment**
+- WHMCS Version: [e.g. 8.10.0]
+- PHP Version: [e.g. 8.1]
+- Addon Version: [e.g. 1.0.0]
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+**Steps to Reproduce**
+1. 
+2. 
+3. 
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+**Expected vs Actual Behavior**
+- Expected: 
+- Actual: 
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+**Error Messages/Logs**
+```
+[Paste any error messages or relevant log entries here]
+```
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
-
-**Additional context**
-Add any other context about the problem here.
+**Additional Context**
+Any other relevant information (screenshots, Discord server setup, etc.)

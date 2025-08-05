@@ -1,20 +1,20 @@
 ---
-name: Feature request
-about: Suggest an idea for this project
-title: ''
-labels: ''
+name: Feature Request
+about: Suggest a new feature for the WHMCS Discord Client Verification addon
+title: '[FEATURE] '
+labels: 'enhancement'
 assignees: ''
 
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+**Feature Description**
+Brief description of the requested feature.
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+**Use Case**
+Why would this feature be useful? What problem does it solve?
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+**Proposed Implementation**
+How do you envision this working? (Optional)
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+**Additional Context**
+Any other relevant information, examples, or screenshots.
