@@ -8,6 +8,8 @@ if (!defined("WHMCS")) {
     die("This file cannot be accessed directly");
 }
 
+require_once __DIR__ . '/discord_verification.php';
+
 use WHMCS\Database\Capsule;
 use WHMCS\View\Menu\Item as MenuItem;
 
@@ -261,11 +263,47 @@ add_hook('ClientAreaPrimarySidebar', 1, function ($primarySidebar) {
             return;
         }
 
-        $discordId = Capsule::table('tblcustomfieldsvalues')
+        $discordData = Capsule::table('tblcustomfieldsvalues')
             ->join('tblcustomfields', 'tblcustomfieldsvalues.fieldid', '=', 'tblcustomfields.id')
             ->where('tblcustomfields.fieldname', 'discord')
             ->where('tblcustomfieldsvalues.relid', $clientId)
             ->value('tblcustomfieldsvalues.value');
+
+        $discordId = null;
+        $discordUsername = null;
+        $discordAvatar = null;
+        
+        if (!empty($discordData)) {
+            if (substr($discordData, 0, 1) === '{') {
+                $decoded = json_decode($discordData, true);
+                if (json_last_error() === JSON_ERROR_NONE && isset($decoded['id'])) {
+                    $discordId = $decoded['id'];
+                    $discordUsername = $decoded['username'] ?? 'Discord User';
+                }
+            } else {
+                $discordId = $discordData;
+            }
+            
+            if ($discordId && !empty($config['bot_token'])) {
+                try {
+                    $userInfo = getDiscordUserInfo($discordId, $config['bot_token']);
+                    if ($userInfo) {
+                        $discordUsername = $userInfo['username'];
+                        if (isset($userInfo['discriminator']) && $userInfo['discriminator'] !== '0') {
+                            $discordUsername .= '#' . $userInfo['discriminator'];
+                        }
+                        
+                        if (isset($userInfo['avatar'])) {
+                            $discordAvatar = "https://cdn.discordapp.com/avatars/{$discordId}/{$userInfo['avatar']}.png";
+                        }
+                    }
+                } catch (Exception $e) {                }
+            }
+            
+            if (empty($discordAvatar)) {
+                $discordAvatar = "https://cdn.discordapp.com/embed/avatars/0.png";
+            }
+        }
 
         $activeProducts = Capsule::table('tblhosting')
             ->where('userid', $clientId)
@@ -289,17 +327,37 @@ add_hook('ClientAreaPrimarySidebar', 1, function ($primarySidebar) {
             $statusBadge = $hasActiveProducts
                 ? '<span class="label label-success">Active Member</span>'
                 : '<span class="label label-info">Verified</span>';
-
-            $discordPanel->addChild('discord-status', [
-                'uri' => '/index.php?m=discord_verification',
-                'label' => $statusBadge,
-                'order' => 1
-            ]);
-
+                
+            $flexLayout = '<div style="display: flex; align-items: center; margin: 10px 0;">';
+            
+            if ($discordAvatar) {
+                $flexLayout .= '<div style="flex: 0 0 auto; margin-right: 12px;">';
+                $flexLayout .= '<img src="' . $discordAvatar . '" alt="Discord Avatar" style="width: 48px; height: 48px; border-radius: 50%;">';
+                $flexLayout .= '</div>';
+            }
+            
+            $flexLayout .= '<div style="flex: 1;">';
+            
+            if ($discordUsername) {
+                $smallBadge = str_replace('class="label ', 'class="label label-sm ', $statusBadge);
+                $smallBadge = str_replace('span class', 'span style="font-size: 10px; padding: 2px 5px; margin-left: 5px;" class', $smallBadge);
+                
+                $flexLayout .= '<div style="display: flex; align-items: center; margin-bottom: 3px;">';
+                $flexLayout .= '<strong>' . htmlspecialchars($discordUsername) . '</strong>';
+                $flexLayout .= $smallBadge;
+                $flexLayout .= '</div>';
+            } else {
+                $flexLayout .= $statusBadge . '<br>';
+            }
+            
+            $flexLayout .= '<small class="text-muted">ID: ' . htmlspecialchars($discordId) . '</small>';
+            $flexLayout .= '</div>';
+            $flexLayout .= '</div>';
+            
             $discordPanel->addChild('discord-info', [
-                'uri' => '#',
-                'label' => '<small class="text-muted">Discord Connected</small>',
-                'order' => 2
+                'uri' => '/index.php?m=discord_verification',
+                'label' => $flexLayout,
+                'order' => 0
             ]);
 
             $discordPanel->setFooterHtml(
