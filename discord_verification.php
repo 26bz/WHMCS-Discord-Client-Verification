@@ -202,7 +202,6 @@ function discord_verification_upgrade($vars)
 
 function discord_verification_output($vars)
 {
-    require_once __DIR__ . '/admin.php';
     return discord_verification_admin_output($vars);
 }
 
