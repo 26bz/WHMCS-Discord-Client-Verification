@@ -519,7 +519,14 @@ add_hook('ClientStatusChange', 1, function ($vars) {
     if ($discordId && is_numeric($discordId)) {
       if ($vars['status'] == 'Inactive') {
         removeRole($discordId, $config['guild_id'], $config['active_role_id'], $config['bot_token']);
-        removeRole($discordId, $config['guild_id'], $config['default_role_id'], $config['bot_token']);
+        assignDiscordRole(
+          $discordId,
+          $vars['userid'],
+          $config['guild_id'],
+          $config['active_role_id'],
+          $config['default_role_id'],
+          $config['bot_token']
+        );
       } else {
         assignDiscordRole(
           $discordId,
