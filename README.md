@@ -110,7 +110,7 @@ These will override module configuration settings.
 ## Requirements
 
 - WHMCS 7.0+
-- PHP 7.4+
+- PHP 7+
 - cURL extension
 - Valid Discord application with bot
 
