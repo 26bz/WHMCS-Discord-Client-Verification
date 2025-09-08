@@ -8,7 +8,9 @@ if (!defined("WHMCS")) {
   die("This file cannot be accessed directly");
 }
 
-require_once __DIR__ . '/discord_verification.php';
+if (!function_exists('discord_verification_config')) {
+  require_once __DIR__ . '/discord_verification.php';
+}
 
 use WHMCS\Database\Capsule;
 use WHMCS\View\Menu\Item as MenuItem;

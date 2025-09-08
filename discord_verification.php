@@ -15,9 +15,10 @@ use WHMCS\Database\Capsule;
 
 require_once __DIR__ . '/admin.php';
 
-function discord_verification_config()
-{
-  return [
+if (!function_exists('discord_verification_config')) {
+  function discord_verification_config()
+  {
+    return [
     'name' => 'Discord Client Verification',
     'description' => 'Automatically verify WHMCS clients with Discord roles based on their account status. Clients with active products receive one role, while verified clients without active products receive a different role.',
     'version' => '1.5',
@@ -75,7 +76,8 @@ function discord_verification_config()
     ]
   ];
 }
-
+}
+if (!function_exists('discord_verification_activate')) {
 function discord_verification_activate()
 {
   try {
@@ -137,7 +139,9 @@ function discord_verification_activate()
     ];
   }
 }
+}
 
+if (!function_exists('discord_verification_deactivate')) {
 function discord_verification_deactivate()
 {
   try {
@@ -180,7 +184,9 @@ function discord_verification_deactivate()
     ];
   }
 }
+}
 
+if (!function_exists('discord_verification_upgrade')) {
 function discord_verification_upgrade($vars)
 {
   $currentlyInstalledVersion = $vars['version'];
@@ -199,12 +205,16 @@ function discord_verification_upgrade($vars)
     ];
   }
 }
+}
 
+if (!function_exists('discord_verification_output')) {
 function discord_verification_output($vars)
 {
   return discord_verification_admin_output($vars);
 }
+}
 
+if (!function_exists('discord_verification_clientarea')) {
 function discord_verification_clientarea($vars)
 {
   $clientId = getenv('DISCORD_CLIENT_ID') ?: $vars['client_id'];
@@ -820,4 +830,5 @@ function parseDiscordRoleError($errorMessage)
   }
 
   return 'Discord linked successfully, but role assignment failed. Please try again or contact admin if the problem persists.';
+}
 }
