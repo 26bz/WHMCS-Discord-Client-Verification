@@ -542,3 +542,82 @@ add_hook('ClientStatusChange', 1, function ($vars) {
     logActivity("Failed to update Discord role on client status change - User ID: {$vars['userid']} - " . $e->getMessage());
   }
 });
+
+add_hook('IntelligentSearch', 1, function ($vars) {
+  $searchResults = [];
+  $searchTerm = trim($vars['searchTerm']);
+  
+  if (!empty($searchTerm) && is_numeric($searchTerm) && strlen($searchTerm) >= 17 && strlen($searchTerm) <= 20) {
+    try {
+      $results = Capsule::table('tblcustomfields')
+        ->join('tblcustomfieldsvalues', 'tblcustomfields.id', '=', 'tblcustomfieldsvalues.fieldid')
+        ->join('tblclients', 'tblcustomfieldsvalues.relid', '=', 'tblclients.id')
+        ->where('tblcustomfields.fieldname', 'discord')
+        ->where(function ($query) use ($searchTerm) {
+          $query->where('tblcustomfieldsvalues.value', $searchTerm)
+                ->orWhere('tblcustomfieldsvalues.value', 'LIKE', '%"id":"' . $searchTerm . '"%');
+        })
+        ->select(
+          'tblclients.id',
+          'tblclients.firstname',
+          'tblclients.lastname',
+          'tblclients.email',
+          'tblclients.status as client_status',
+          'tblcustomfieldsvalues.value as discord_data'
+        )
+        ->limit($vars['numResults'])
+        ->get();
+
+      foreach ($results as $client) {
+        $discordUsername = '';
+        
+        if (substr($client->discord_data, 0, 1) === '{') {
+          $decoded = json_decode($client->discord_data, true);
+          if (json_last_error() === JSON_ERROR_NONE && isset($decoded['username'])) {
+            $discordUsername = $decoded['username'];
+          }
+        }
+        
+        $clientName = trim($client->firstname . ' ' . $client->lastname);
+        if (empty($clientName)) {
+          $clientName = 'Client #' . $client->id;
+        }
+        
+        $subtitle = $client->email;
+        if (!empty($discordUsername)) {
+          $subtitle .= ' • Discord: ' . htmlspecialchars($discordUsername);
+        }
+        $subtitle .= ' • ID: ' . $searchTerm;
+        
+        $statusIcon = 'fal fa-user';
+        switch (strtolower($client->client_status)) {
+          case 'active':
+            $statusIcon = 'fal fa-user-check';
+            break;
+          case 'inactive':
+            $statusIcon = 'fal fa-user-times';
+            break;
+          case 'closed':
+            $statusIcon = 'fal fa-user-slash';
+            break;
+        }
+        
+        $searchResults[] = [
+          'title' => $clientName,
+          'href' => 'clientssummary.php?userid=' . $client->id,
+          'subTitle' => $subtitle,
+          'icon' => $statusIcon,
+        ];
+      }
+      
+      if (!empty($searchResults)) {
+        logActivity("Discord Verification: Admin searched for Discord ID '{$searchTerm}' - " . count($searchResults) . " result(s) found");
+      }
+      
+    } catch (Exception $e) {
+      logActivity("Discord Verification: IntelligentSearch error - " . $e->getMessage());
+    }
+  }
+  
+  return $searchResults;
+});
