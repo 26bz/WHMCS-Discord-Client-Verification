@@ -21,7 +21,7 @@ if (!function_exists('discord_verification_config')) {
     return [
     'name' => 'Discord Client Verification',
     'description' => 'Automatically verify WHMCS clients with Discord roles based on their account status. Clients with active products receive one role, while verified clients without active products receive a different role.',
-    'version' => '1.5',
+    'version' => '1.5.2',
     'author' => '<a href="https://26bz.online/" target="_blank">26BZ</a>',
     'language' => 'english',
     'fields' => [
