@@ -546,7 +546,7 @@ add_hook('ClientStatusChange', 1, function ($vars) {
 add_hook('IntelligentSearch', 1, function ($vars) {
   $searchResults = [];
   $searchTerm = trim($vars['searchTerm']);
-  
+
   if (!empty($searchTerm) && is_numeric($searchTerm) && strlen($searchTerm) >= 17 && strlen($searchTerm) <= 20) {
     try {
       $results = Capsule::table('tblcustomfields')
@@ -555,7 +555,7 @@ add_hook('IntelligentSearch', 1, function ($vars) {
         ->where('tblcustomfields.fieldname', 'discord')
         ->where(function ($query) use ($searchTerm) {
           $query->where('tblcustomfieldsvalues.value', $searchTerm)
-                ->orWhere('tblcustomfieldsvalues.value', 'LIKE', '%"id":"' . $searchTerm . '"%');
+            ->orWhere('tblcustomfieldsvalues.value', 'LIKE', '%"id":"' . $searchTerm . '"%');
         })
         ->select(
           'tblclients.id',
@@ -570,25 +570,25 @@ add_hook('IntelligentSearch', 1, function ($vars) {
 
       foreach ($results as $client) {
         $discordUsername = '';
-        
+
         if (substr($client->discord_data, 0, 1) === '{') {
           $decoded = json_decode($client->discord_data, true);
           if (json_last_error() === JSON_ERROR_NONE && isset($decoded['username'])) {
             $discordUsername = $decoded['username'];
           }
         }
-        
+
         $clientName = trim($client->firstname . ' ' . $client->lastname);
         if (empty($clientName)) {
           $clientName = 'Client #' . $client->id;
         }
-        
+
         $subtitle = $client->email;
         if (!empty($discordUsername)) {
           $subtitle .= ' • Discord: ' . htmlspecialchars($discordUsername);
         }
         $subtitle .= ' • ID: ' . $searchTerm;
-        
+
         $statusIcon = 'fal fa-user';
         switch (strtolower($client->client_status)) {
           case 'active':
@@ -601,7 +601,7 @@ add_hook('IntelligentSearch', 1, function ($vars) {
             $statusIcon = 'fal fa-user-slash';
             break;
         }
-        
+
         $searchResults[] = [
           'title' => $clientName,
           'href' => 'clientssummary.php?userid=' . $client->id,
@@ -609,15 +609,133 @@ add_hook('IntelligentSearch', 1, function ($vars) {
           'icon' => $statusIcon,
         ];
       }
-      
+
       if (!empty($searchResults)) {
         logActivity("Discord Verification: Admin searched for Discord ID '{$searchTerm}' - " . count($searchResults) . " result(s) found");
       }
-      
     } catch (Exception $e) {
       logActivity("Discord Verification: IntelligentSearch error - " . $e->getMessage());
     }
   }
-  
+
   return $searchResults;
+});
+
+function isDiscordVerified($clientId)
+{
+  try {
+    $discordId = Capsule::table('tblcustomfields')
+      ->join('tblcustomfieldsvalues', 'tblcustomfields.id', '=', 'tblcustomfieldsvalues.fieldid')
+      ->where('tblcustomfields.fieldname', 'discord')
+      ->where('tblcustomfieldsvalues.relid', $clientId)
+      ->value('tblcustomfieldsvalues.value');
+
+    return !empty($discordId);
+  } catch (Exception $e) {
+    logActivity("Discord Verification: Error checking verification status - " . $e->getMessage());
+    return false;
+  }
+}
+
+function isForceVerificationEnabled()
+{
+  $config = getDiscordModuleConfig();
+  return isset($config['force_verification']) && $config['force_verification'] === 'on';
+}
+
+function isExemptPage($filename, $module = '')
+{
+  if ($module === 'discord_verification') {
+    return true;
+  }
+
+  $exemptPages = [
+    'logout',
+    'login',
+    'register',
+    'pwreset',
+    'viewinvoice',
+    'dl',
+    'knowledgebase',
+    'announcements',
+    'serverstatus',
+    'index',
+    'submitticket',
+    'contact',
+  ];
+
+  if (isset($_GET['m']) && $_GET['m'] === 'discord_verification') {
+    return true;
+  }
+
+  return in_array($filename, $exemptPages);
+}
+
+add_hook('ClientAreaPage', 1, function ($vars) {
+  if (!isForceVerificationEnabled()) {
+    return $vars;
+  }
+
+  if (!isset($_SESSION['uid']) || empty($_SESSION['uid'])) {
+    return $vars;
+  }
+
+  $filename = isset($vars['filename']) ? $vars['filename'] : '';
+  $module = isset($vars['module']) ? $vars['module'] : '';
+
+  $userId = (int)$_SESSION['uid'];
+  $isVerified = isDiscordVerified($userId);
+
+  if (!$isVerified && !isExemptPage($filename, $module)) {
+    if (!isset($_SESSION['discord_verification_redirect'])) {
+      $currentUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') .
+        '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+      $_SESSION['discord_verification_redirect'] = $currentUrl;
+    }
+
+    header('Location: index.php?m=discord_verification');
+    exit;
+  } elseif ($isVerified && isset($_SESSION['discord_verification_redirect'])) {
+    $redirectUrl = $_SESSION['discord_verification_redirect'];
+    unset($_SESSION['discord_verification_redirect']);
+
+    $currentUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') .
+      '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+    if ($redirectUrl !== $currentUrl) {
+      header('Location: ' . $redirectUrl);
+      exit;
+    }
+  }
+
+  return $vars;
+});
+
+add_hook('AdminAreaClientSummaryPage', 1, function ($vars) {
+
+  $config = getDiscordModuleConfig();
+  $forceVerificationEnabled = isset($config['force_verification']) && $config['force_verification'] === 'on';
+
+  $clientId = $vars['userid'];
+  $isVerified = isDiscordVerified($clientId);
+
+  if (!$isVerified) {
+    $warningClass = $forceVerificationEnabled ? 'alert-warning' : 'alert-info';
+    $message = $forceVerificationEnabled
+      ? 'This client has not verified their Discord account and will be prompted to verify before accessing the client area.'
+      : 'This client has not verified their Discord account.';
+
+    return <<<HTML
+<div class="alert {$warningClass}">
+  <div style="display: flex; align-items: center;">
+    <i class="fab fa-discord" style="font-size: 24px; margin-right: 10px;"></i>
+    <div>
+      <strong>Discord Not Verified</strong>
+      <p style="margin: 5px 0 10px;">{$message}</p>
+    </div>
+  </div>
+</div>
+HTML;
+  }
+
+  return '';
 });

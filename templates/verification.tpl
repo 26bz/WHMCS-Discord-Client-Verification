@@ -21,6 +21,15 @@
     </div>
     {else}
     <h1 class="mb-5">{$message}</h1>
+    
+    {if $force_verification}
+    <div class="alert alert-warning mb-4">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>Discord verification is required</strong>
+        <p>You must verify your Discord account to access the client area.</p>
+    </div>
+    {/if}
+    
     <a class="btn btn-primary mt-2" href="{$modulelink}&action=verify">
         <i class="fas fa-check"></i> Verify Discord
     </a>
