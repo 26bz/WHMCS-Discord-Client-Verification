@@ -73,6 +73,12 @@ if (!function_exists('discord_verification_config')) {
         'Default' => 'yes',
         'Description' => 'Show Discord verification status widget in client area sidebar',
       ],
+      'force_verification' => [
+        'FriendlyName' => 'Force Discord Verification',
+        'Type' => 'yesno',
+        'Default' => 'no',
+        'Description' => 'Force clients to link their Discord account to access the client area (similar to email verification)',
+      ],
     ]
   ];
 }
@@ -408,6 +414,9 @@ function discord_verification_clientarea($vars)
       ],
     ];
   } else {
+    $config = getDiscordConfig();
+    $forceVerification = isset($config['force_verification']) && $config['force_verification'] === 'on';
+    
     return [
       'pagetitle' => 'Discord Verification',
       'breadcrumb' => ['index.php?m=discord_verification' => 'Discord Verification'],
@@ -418,6 +427,7 @@ function discord_verification_clientarea($vars)
         'verified' => false,
         'message' => 'Link your Discord account to your client area',
         'modulelink' => $vars['modulelink'],
+        'force_verification' => $forceVerification,
       ],
     ];
   }
@@ -599,6 +609,8 @@ function getDiscordConfig()
       'guild_id' => $config['guild_id'] ?? '',
       'active_role_id' => $config['active_role_id'] ?? '',
       'default_role_id' => $config['default_role_id'] ?? '',
+      'enable_client_widget' => $config['enable_client_widget'] ?? 'yes',
+      'force_verification' => $config['force_verification'] ?? 'no',
     ];
   } catch (Exception $e) {
     return [
@@ -608,6 +620,8 @@ function getDiscordConfig()
       'guild_id' => '',
       'active_role_id' => '',
       'default_role_id' => '',
+      'enable_client_widget' => 'yes',
+      'force_verification' => 'no',
     ];
   }
 }
