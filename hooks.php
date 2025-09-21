@@ -201,7 +201,7 @@ add_hook('ClientAreaSecondaryNavbar', 1, function ($secondaryNavbar) {
   }
 });
 
-add_hook('DailyCronJob', 1, function () {
+add_hook('DailyCronJob', 5, function () {
   $config = getDiscordModuleConfig();
 
   if (empty($config['bot_token']) || empty($config['guild_id'])) {
@@ -710,7 +710,7 @@ add_hook('ClientAreaPage', 1, function ($vars) {
   return $vars;
 });
 
-add_hook('AdminAreaClientSummaryPage', 1, function ($vars) {
+add_hook('AdminAreaClientSummaryPage', 5, function ($vars) {
 
   $config = getDiscordModuleConfig();
   $forceVerificationEnabled = isset($config['force_verification']) && $config['force_verification'] === 'on';
