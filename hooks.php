@@ -110,11 +110,11 @@ function assignDiscordRole($userId, $clientId, $guildId, $activeRoleId, $default
   curl_close($ch);
 
   if ($response === false) {
-    throw new Exception('Failed to assign role: cURL error');
+    throw new Exception('ROLE_ERROR:Unable to assign role. Please contact support.');
   }
 
   if (!in_array($httpCode, [204, 200])) {
-    throw new Exception('Failed to assign role: HTTP ' . $httpCode . ' - ' . $response);
+    throw new Exception('ROLE_ERROR:Role assignment failed. Please contact support.');
   }
 
   return true;
@@ -132,7 +132,7 @@ add_hook('CustomFieldSave', 1, function ($vars) {
     if (!empty($cleanValue)) {
       // Discord IDs are typically 17-20 digits long
       if (strlen($cleanValue) < 17 || strlen($cleanValue) > 20) {
-        throw new Exception('Invalid Discord ID format');
+        throw new Exception('VALIDATION_ERROR:Invalid format. Please contact support.');
       }
 
       return [
