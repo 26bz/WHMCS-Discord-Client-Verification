@@ -239,7 +239,7 @@ function discord_verification_clientarea($vars)
       'forcessl' => true,
       'vars' => [
         'error' => true,
-        'message' => 'Discord integration is not properly configured. Please contact an administrator.',
+        'message' => 'Service temporarily unavailable. Please contact support.',
       ],
     ];
   }
@@ -318,7 +318,7 @@ function discord_verification_clientarea($vars)
       $userInfo = getUserInfo($tokenData->access_token);
 
       if (!isset($userInfo->id)) {
-        throw new Exception("Failed to retrieve user information from Discord.");
+        throw new Exception("VERIFICATION_FAILED:Unable to complete verification. Please try again.");
       }
 
       $existingClient = checkDuplicateDiscordAccount($userInfo->id, $client->id);
@@ -451,12 +451,12 @@ function exchangeAuthorizationCodeForAccessToken($code, $client_id, $secret_id, 
 
   $response = curl_exec($ch);
   if ($response === false) {
-    throw new Exception('Failed to retrieve access token: ' . curl_error($ch));
+    throw new Exception('OAUTH_ERROR:Authentication failed. Please try again.');
   }
 
   $data = json_decode($response);
   if (!isset($data->access_token)) {
-    throw new Exception('Invalid token response: ' . $response);
+    throw new Exception('OAUTH_ERROR:Authentication failed. Please try again.');
   }
 
   curl_close($ch);
@@ -474,12 +474,12 @@ function getUserInfo($accessToken)
 
   $response = curl_exec($ch);
   if ($response === false) {
-    throw new Exception('Failed to retrieve user info: ' . curl_error($ch));
+    throw new Exception('USER_INFO_ERROR:Unable to retrieve account information. Please try again.');
   }
 
   $data = json_decode($response);
   if (!isset($data->id)) {
-    throw new Exception('Invalid user info response: ' . $response);
+    throw new Exception('USER_INFO_ERROR:Unable to retrieve account information. Please try again.');
   }
 
   curl_close($ch);
@@ -494,7 +494,7 @@ function updateClientDiscordId($discordId, $clientId, $discordUsername = null)
       ->value('id');
 
     if (!$discordFieldId) {
-      throw new Exception('Discord custom field not found');
+      throw new Exception('SYSTEM_ERROR:Configuration error. Please contact support.');
     }
 
     // Store data as JSON if username is available otherwise just ID
@@ -515,7 +515,7 @@ function updateClientDiscordId($discordId, $clientId, $discordUsername = null)
 
     return true;
   } catch (Exception $e) {
-    throw new Exception('Failed to update Discord ID: ' . $e->getMessage());
+    throw new Exception('SYSTEM_ERROR:Unable to save verification data. Please contact support.');
   }
 }
 
@@ -724,11 +724,11 @@ function getDiscordUserInfo($userId, $botToken)
   curl_close($ch);
 
   if ($response === false) {
-    throw new Exception('Failed to retrieve Discord user info: ' . curl_error($ch));
+    throw new Exception('API_ERROR:Unable to retrieve user information. Please contact support.');
   }
 
   if ($httpCode !== 200) {
-    throw new Exception('Discord API error: ' . $response);
+    throw new Exception('API_ERROR:Unable to retrieve user information. Please contact support.');
   }
 
   return json_decode($response, true);
