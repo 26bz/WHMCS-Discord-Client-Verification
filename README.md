@@ -6,6 +6,7 @@ A professional WHMCS addon module that integrates with Discord to automatically 
 
 - **OAuth2 Discord Authentication**: Secure Discord verification using OAuth2 flow
 - **Automatic Role Assignment**: Assigns different roles based on active WHMCS products
+- **Automatic Guild Joining**: Adds users to your Discord server when they verify
 - **Real-time Updates**: Hooks into WHMCS events for instant role synchronization
 - **Daily Synchronization**: Cron job ensures roles stay in sync
 - **Environment Variable Support**: Secure credential management
@@ -33,6 +34,7 @@ A professional WHMCS addon module that integrates with Discord to automatically 
      - **Discord Guild ID**: Your Discord server ID
      - **Active Role ID**: Role ID for clients with active products
      - **Default Role ID**: Role ID for verified clients without active products
+     - **Auto Join Server**: Enable to automatically add users to your Discord server when they verify
 
 ## Discord Application Setup
 
@@ -56,8 +58,16 @@ A professional WHMCS addon module that integrates with Discord to automatically 
    https://yourdomain.com/index.php?m=discord_verification
    ```
 
-4. **Invite Bot to Server**:
-   - Use OAuth2 URL Generator with `bot` scope and `Manage Roles` permission
+4. **Configure OAuth2 Scopes**:
+   - In **OAuth2 → URL Generator**, select the following scopes:
+     - `identify` - Required for basic user information
+     - `email` - Optional but recommended
+     - `guilds.join` - Required for automatic server joining
+
+5. **Invite Bot to Server**:
+   - Use OAuth2 URL Generator with `bot` scope and the following permissions:
+     - `Manage Roles` - Required for role assignment
+     - `Manage Guild` - Required for auto-joining users to the server
    - Ensure bot role is higher than roles it needs to assign
 
 ## Environment Variables (Optional)

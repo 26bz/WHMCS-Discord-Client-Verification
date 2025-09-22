@@ -79,6 +79,12 @@ if (!function_exists('discord_verification_config')) {
         'Default' => 'no',
         'Description' => 'Force clients to link their Discord account to access the client area (similar to email verification)',
       ],
+      'auto_join_guild' => [
+        'FriendlyName' => 'Auto Join Server',
+        'Type' => 'yesno',
+        'Default' => 'yes',
+        'Description' => 'Automatically add users to your Discord server when they verify (requires bot with MANAGE_GUILD permission)',
+      ],
     ]
   ];
 }
@@ -284,12 +290,16 @@ function discord_verification_clientarea($vars)
   if (isset($_GET['action']) && $_GET['action'] === 'verify') {
     $csrfToken = bin2hex(random_bytes(32));
     $_SESSION['csrf_token'] = $csrfToken;
+    
+    $config = getDiscordConfig();
+    $autoJoinGuild = isset($config['auto_join_guild']) && $config['auto_join_guild'] === 'on';
+    $scope = $autoJoinGuild ? 'identify email guilds.join' : 'identify email';
 
     $authorizationUrl = 'https://discord.com/oauth2/authorize?' . http_build_query([
       'response_type' => 'code',
       'client_id' => $clientId,
       'redirect_uri' => $redirectUri,
-      'scope' => 'identify email',
+      'scope' => $scope,
       'state' => $csrfToken,
     ]);
 
@@ -333,6 +343,17 @@ function discord_verification_clientarea($vars)
       updateClientDiscordId($userInfo->id, $client->id, $discordUsername);
 
       try {
+        $config = getDiscordConfig();
+        $autoJoinGuild = isset($config['auto_join_guild']) && $config['auto_join_guild'] === 'on';
+        
+        if ($autoJoinGuild) {
+          try {
+            addUserToGuild($userInfo->id, $tokenData->access_token, $guildId, $botToken);
+          } catch (Exception $e) {
+            logActivity("Failed to add Discord user {$userInfo->id} to guild - " . $e->getMessage());
+          }
+        }
+        
         assignRoleToUser($userInfo->id, $client->id, $guildId, $activeRoleId, $defaultRoleId, $botToken);
         logActivity("Discord successfully linked for Client ID: " . $client->id);
 
@@ -611,6 +632,7 @@ function getDiscordConfig()
       'default_role_id' => $config['default_role_id'] ?? '',
       'enable_client_widget' => $config['enable_client_widget'] ?? 'yes',
       'force_verification' => $config['force_verification'] ?? 'no',
+      'auto_join_guild' => $config['auto_join_guild'] ?? 'yes',
     ];
   } catch (Exception $e) {
     return [
@@ -622,6 +644,7 @@ function getDiscordConfig()
       'default_role_id' => '',
       'enable_client_widget' => 'yes',
       'force_verification' => 'no',
+      'auto_join_guild' => 'yes',
     ];
   }
 }
@@ -809,6 +832,10 @@ function parseDiscordError($errorMessage)
   if (strpos($errorMessage, 'DISCORD_DOWN:') === 0) {
     return substr($errorMessage, 13);
   }
+  
+  if (strpos($errorMessage, 'GUILD_JOIN_FAILED:') === 0) {
+    return substr($errorMessage, 17);
+  }
 
   return 'An unexpected error occurred during Discord verification. Please try again or contact support if the problem persists.';
 }
@@ -844,5 +871,51 @@ function parseDiscordRoleError($errorMessage)
   }
 
   return 'Discord linked successfully, but role assignment failed. Please try again or contact admin if the problem persists.';
+}
+
+function addUserToGuild($userId, $accessToken, $guildId, $botToken)
+{
+  $url = "https://discord.com/api/v10/guilds/{$guildId}/members/{$userId}";
+  $data = json_encode(['access_token' => $accessToken]);
+  
+  $ch = curl_init($url);
+  curl_setopt_array($ch, [
+    CURLOPT_CUSTOMREQUEST => "PUT",
+    CURLOPT_POSTFIELDS => $data,
+    CURLOPT_HTTPHEADER => [
+      'Authorization: Bot ' . $botToken,
+      'Content-Type: application/json',
+    ],
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_SSL_VERIFYPEER => true,
+    CURLOPT_TIMEOUT => 10
+  ]);
+  
+  $response = curl_exec($ch);
+  $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  curl_close($ch);
+  
+  logModuleCall(
+    'discord_verification',
+    'add_to_guild',
+    "PUT /guilds/{$guildId}/members/{$userId}",
+    $response,
+    $httpCode,
+    [$botToken, $accessToken]
+  );
+  
+  if ($response === false) {
+    throw new Exception('CURL_ERROR:Failed to connect to Discord API.');
+  }
+
+  if (!in_array($httpCode, [201, 204])) {
+    if ($httpCode === 403) {
+      throw new Exception('NOT_IN_GUILD:Failed to add you to the Discord server.');
+    } else {
+      throw new Exception('GUILD_JOIN_FAILED:Failed to add you to the Discord server.');
+    }
+  }
+  
+  return true;
 }
 }
