@@ -59,6 +59,7 @@ A professional WHMCS addon module that integrates with Discord to automatically 
    ```
 
 4. **Configure OAuth2 Scopes**:
+
    - In **OAuth2 → URL Generator**, select the following scopes:
      - `identify` - Required for basic user information
      - `email` - Optional but recommended
