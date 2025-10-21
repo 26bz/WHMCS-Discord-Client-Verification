@@ -1,6 +1,7 @@
 {
   "conventionalCommits.scopes": [
     "hooks",
-    "core"
+    "core",
+    "admin"
   ]
 }
