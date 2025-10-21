@@ -111,6 +111,31 @@ function getVerifiedUsers()
     $users = Capsule::table('tblcustomfieldsvalues')
       ->join('tblcustomfields', 'tblcustomfieldsvalues.fieldid', '=', 'tblcustomfields.id')
       ->join('tblclients', 'tblcustomfieldsvalues.relid', '=', 'tblclients.id')
+      ->leftJoin(
+        Capsule::raw('(
+          SELECT userid, COUNT(*) as active_count
+          FROM tblhosting
+          WHERE domainstatus = "Active"
+          GROUP BY userid
+        ) as active_products'),
+        'tblclients.id',
+        '=',
+        'active_products.userid'
+      )
+      ->leftJoin(
+        Capsule::raw('(
+          SELECT 
+            CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(description, "Client ID: ", -1), " ", 1) AS UNSIGNED) as client_id,
+            MAX(date) as last_sync_date
+          FROM tblactivitylog
+          WHERE description LIKE "%Discord role sync%"
+            AND description LIKE "%Client ID:%"
+          GROUP BY CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(description, "Client ID: ", -1), " ", 1) AS UNSIGNED)
+        ) as sync_log'),
+        'tblclients.id',
+        '=',
+        'sync_log.client_id'
+      )
       ->where('tblcustomfields.fieldname', 'discord')
       ->where('tblcustomfieldsvalues.value', '!=', '')
       ->select(
@@ -119,41 +144,25 @@ function getVerifiedUsers()
         'tblclients.lastname',
         'tblclients.companyname',
         'tblclients.email',
-        'tblcustomfieldsvalues.value as discord_data'
+        'tblcustomfieldsvalues.value as discord_data',
+        Capsule::raw('COALESCE(active_products.active_count, 0) as active_count'),
+        Capsule::raw('sync_log.last_sync_date as last_sync')
       )
+      ->orderBy('tblclients.id', 'desc')
       ->get();
 
     foreach ($users as $user) {
       $discordData = $user->discord_data;
       if (strpos($discordData, '{') === 0) {
-        // JSON format: {"id":"123","username":"user#1234"}
         $decoded = json_decode($discordData, true);
         $user->discord_id = $decoded['id'] ?? $discordData;
-        $user->discord_username = $decoded['username'] ?? null;
+        $user->discord_username = $decoded['username'] ?? 'Unknown';
       } else {
-        // Plain ID format
         $user->discord_id = $discordData;
-        $user->discord_username = null;
+        $user->discord_username = 'Unknown';
       }
 
-      $activeProducts = Capsule::table('tblhosting')
-        ->where('userid', $user->client_id)
-        ->where('domainstatus', 'Active')
-        ->count();
-
-      $user->has_active_products = $activeProducts > 0;
-
-      $lastSync = Capsule::table('tblactivitylog')
-        ->where('description', 'like', '%Discord role sync%')
-        ->where('description', 'like', '%Client ID: ' . $user->client_id . '%')
-        ->orderBy('date', 'desc')
-        ->first();
-
-      $user->last_sync = $lastSync ? $lastSync->date : null;
-
-      if (!$user->discord_username && $user->discord_id) {
-        $user->discord_username = fetchDiscordUsername($user->discord_id);
-      }
+      $user->has_active_products = $user->active_count > 0;
     }
 
     return $users;
@@ -359,21 +368,21 @@ function displayVerifiedUsersTable($modulelink, $verifiedUsers)
       }
 
       echo '<tr>';
-      echo '<td><i class="fa fa-plus expand-btn" onclick="toggleUserDetails(' . $user->client_id . ')"></i></td>';
-      echo '<td><a href="clientssummary.php?userid=' . $user->client_id . '" target="_blank">' . htmlspecialchars($name) . '</a></td>';
+      echo '<td><i class="fa fa-plus expand-btn" onclick="toggleUserDetails(' . (int)$user->client_id . ')"></i></td>';
+      echo '<td><a href="clientssummary.php?userid=' . (int)$user->client_id . '" target="_blank">' . htmlspecialchars($name) . '</a></td>';
       echo '<td>' . htmlspecialchars($user->discord_username ?: 'Unknown') . '<br><small class="text-muted"><code>' . htmlspecialchars($user->discord_id) . '</code></small></td>';
       echo '<td><span class="label label-' . ($user->has_active_products ? 'success' : 'default') . '">' . ($user->has_active_products ? 'Active Member' : 'Default Role') . '</span></td>';
       echo '<td>' . ($user->last_sync ? date('M j, Y H:i', strtotime($user->last_sync)) : '<span class="text-muted">Never</span>') . '</td>';
       echo '<td>';
       echo '<form method="post" action="' . $modulelink . '" style="display: inline-block; margin-right: 5px;">';
       echo '<input type="hidden" name="action" value="sync_user">';
-      echo '<input type="hidden" name="client_id" value="' . $user->client_id . '">';
-      echo '<input type="hidden" name="discord_id" value="' . $user->discord_id . '">';
+      echo '<input type="hidden" name="client_id" value="' . htmlspecialchars($user->client_id) . '">';
+      echo '<input type="hidden" name="discord_id" value="' . htmlspecialchars($user->discord_id) . '">';
       echo '<button type="submit" class="btn btn-success btn-sm"><i class="fa fa-refresh"></i> Sync</button>';
       echo '</form>';
       echo '<form method="post" action="' . $modulelink . '" style="display: inline-block;">';
       echo '<input type="hidden" name="action" value="remove_user">';
-      echo '<input type="hidden" name="client_id" value="' . $user->client_id . '">';
+      echo '<input type="hidden" name="client_id" value="' . htmlspecialchars($user->client_id) . '">';
       echo '<button type="submit" class="btn btn-danger btn-sm" onclick="return confirm(\'Remove Discord association for this user? This will unlink their Discord account.\');">';
       echo '<i class="fa fa-times"></i> Remove';
       echo '</button>';
@@ -381,8 +390,7 @@ function displayVerifiedUsersTable($modulelink, $verifiedUsers)
       echo '</td>';
       echo '</tr>';
 
-      // Expandable row
-      echo '<tr id="user-details-' . $user->client_id . '" class="user-details">';
+      echo '<tr id="user-details-' . (int)$user->client_id . '" class="user-details">';
       echo '<td colspan="6">';
       echo '<div style="padding: 15px;">';
       echo '<div class="row">';
