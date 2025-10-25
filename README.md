@@ -125,8 +125,17 @@ These will override module configuration settings.
 - cURL extension
 - Valid Discord application with bot
 
-## Support
+## License
 
-Create a ticket via Github or join the discord
+This project is licensed under the GNU General Public License v3.0 (GPLv3).
 
-- https://26bz.online/discord
+- You may use, modify, and redistribute this module freely.
+- Any distributed modifications must remain under GPLv3.
+- Commercial resale of closed-source versions is not allowed.
+
+Full license text is in the `LICENSE` file.
+
+### Contact
+
+- Website: https://26bz.online
+- Discord: https://26bz.online/discord

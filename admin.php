@@ -1,8 +1,9 @@
 <?php
 
-/**
- * @author 26BZ (https://github.com/26BZ)
- * @license MIT License
+/*
+ * WHMCS Discord Client Verifcation Module
+ * Copyright (C) 2025 26bz (https://26bz.online/)
+ * Licensed under GNU GPLv3 or later. See LICENSE file.
  */
 
 if (!defined("WHMCS")) {
